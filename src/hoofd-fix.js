@@ -1,20 +1,4 @@
 import { createContext, useContext, useEffect, useRef, useMemo } from "react";
-function _extends() {
-  _extends = Object.assign
-    ? Object.assign.bind()
-    : function (target) {
-        for (var i = 1; i < arguments.length; i++) {
-          var source = arguments[i];
-          for (var key in source) {
-            if (Object.prototype.hasOwnProperty.call(source, key)) {
-              target[key] = source[key];
-            }
-          }
-        }
-        return target;
-      };
-  return _extends.apply(this, arguments);
-}
 
 var isServerSide = typeof document === "undefined";
 
@@ -59,11 +43,15 @@ var createDispatcher = function createDispatcher() {
   var currentTitleIndex = 0;
   var currentTitleTemplateIndex = 0;
   var currentMetaIndex = 0;
+  var isProcessing = false;
+
   var processQueue = (function () {
     var timeout;
     return function () {
+      isProcessing = true;
       clearTimeout(timeout);
       timeout = setTimeout(function () {
+        isProcessing = false;
         timeout = null;
         var visited = new Set();
         document.title = applyTitleTemplate(
@@ -103,16 +91,29 @@ var createDispatcher = function createDispatcher() {
         var queue = type === TEMPLATE ? titleTemplateQueue : titleQueue;
         var index = queue.indexOf(payload);
         queue.splice(index, 1);
-        if (index === 0)
+
+        if (isProcessing) {
+          if (type === TITLE) {
+            currentTitleIndex--;
+          } else {
+            currentTitleTemplateIndex--;
+          }
+        }
+
+        if (index === 0) {
           document.title = applyTitleTemplate(
             titleQueue[0] || "",
             titleTemplateQueue[0]
           );
+        }
       } else {
-        var _index = metaQueue.indexOf(payload);
-        var oldMeta = metaQueue[_index];
+        const index = metaQueue.indexOf(payload);
+        var oldMeta = metaQueue[index];
         if (oldMeta) {
-          metaQueue.splice(_index, 1);
+          metaQueue.splice(index, 1);
+          if (currentMetaIndex === index) {
+            currentMetaIndex--;
+          }
           var newMeta = metaQueue.find(function (m) {
             return (
               m.keyword === oldMeta.keyword &&
@@ -131,9 +132,7 @@ var createDispatcher = function createDispatcher() {
                     oldMeta[oldMeta.keyword] +
                     '"]'
             );
-            if (result[0]) {
-              document.head.removeChild(result[0]);
-            }
+            document.head.removeChild(result[0]);
           }
         }
       }
@@ -156,40 +155,6 @@ var createDispatcher = function createDispatcher() {
     },
     _reset: undefined,
     toStatic: function toStatic() {
-      var ESCAPED_CHARS = /['"&<>]/;
-      function escape(str) {
-        if (str.length === 0 || ESCAPED_CHARS.test(str) === false) return str;
-        var last = 0,
-          i = 0,
-          out = "",
-          ch = "";
-        for (; i < str.length; i++) {
-          switch (str.charCodeAt(i)) {
-            case 34:
-              ch = '"';
-              break;
-            case 38:
-              ch = "&";
-              break;
-            case 39:
-              ch = "'";
-              break;
-            case 60:
-              ch = "<";
-              break;
-            case 62:
-              ch = ">";
-              break;
-            default:
-              continue;
-          }
-          if (i !== last) out += str.slice(last, i);
-          out += ch;
-          last = i + 1;
-        }
-        if (i !== last) out += str.slice(last, i);
-        return out;
-      }
       var title = applyTitleTemplate(
         titleQueue[titleQueue.length - 1],
         titleTemplateQueue[titleTemplateQueue.length - 1]
@@ -213,14 +178,7 @@ var createDispatcher = function createDispatcher() {
       return {
         lang: lang,
         title: title,
-        links: links.map(function (x) {
-          var _extends2;
-          return _extends(
-            {},
-            x,
-            ((_extends2 = {}), (_extends2["data-hoofd"] = "1"), _extends2)
-          );
-        }),
+        links: links,
         scripts: scripts,
         metas: metas.map(function (meta) {
           var _ref;
@@ -230,7 +188,7 @@ var createDispatcher = function createDispatcher() {
               }
             : ((_ref = {}),
               (_ref[meta.keyword] = meta[meta.keyword]),
-              (_ref.content = escape(meta.content)),
+              (_ref.content = meta.content),
               _ref);
         }),
       };
@@ -257,6 +215,7 @@ var useLink = function useLink(options) {
   var dispatcher = useContext(DispatcherContext);
   var hasMounted = useRef(false);
   var node = useRef();
+  var originalOptions = useRef();
   if (isServerSide && !hasMounted.current) {
     dispatcher._addToQueue(LINK, options);
   }
@@ -275,13 +234,13 @@ var useLink = function useLink(options) {
       options.rel,
       options.crossorigin,
       options.type,
-      options.hreflang,
-      options.sizes,
     ]
   );
   useEffect(function () {
     hasMounted.current = true;
-    var preExistingElements = document.querySelectorAll('link[data-hoofd="1"]');
+    var preExistingElements = document.querySelectorAll(
+      'link[rel="' + options.rel + '"]'
+    );
     preExistingElements.forEach(function (x) {
       var found = true;
       Object.keys(options).forEach(function (key) {
@@ -289,11 +248,21 @@ var useLink = function useLink(options) {
           found = false;
         }
       });
+
       if (found) {
         node.current = x;
       }
     });
-    if (!node.current) {
+    if (node.current) {
+      originalOptions.current = Object.keys(options).reduce(function (
+        acc,
+        key
+      ) {
+        acc[key] = node.current.getAttribute(key);
+        return acc;
+      },
+      {});
+    } else {
       node.current = document.createElement("link");
       Object.keys(options).forEach(function (key) {
         node.current.setAttribute(key, options[key]);
@@ -302,9 +271,13 @@ var useLink = function useLink(options) {
     }
     return function () {
       hasMounted.current = false;
-      if (node.current) {
+
+      if (originalOptions.current) {
+        Object.keys(originalOptions.current).forEach(function (key) {
+          node.current.setAttribute(key, originalOptions.current[key]);
+        });
+      } else {
         document.head.removeChild(node.current);
-        node.current = undefined;
       }
     };
   }, []);
@@ -316,11 +289,11 @@ var useScript = function useScript(options) {
     dispatcher._addToQueue(SCRIPT, options);
   }
   useEffect(function () {
-    var preExistingElements = options.id
-      ? document.querySelectorAll('script[id="' + options.id + '"]')
-      : document.querySelectorAll('script[src="' + options.src + '"]');
+    var preExistingElements = document.querySelectorAll(
+      'script[src="' + options.src + '"]'
+    );
     var script;
-    if (!preExistingElements[0] && (options.src || options.id)) {
+    if (!preExistingElements[0] && options.src) {
       var _script = document.createElement("script");
       if (options.type) _script.type = options.type;
       if (options.module) _script.type = "module";
@@ -330,9 +303,7 @@ var useScript = function useScript(options) {
         _script.setAttribute("crossorigin", options.crossorigin);
       if (options.defer) _script.setAttribute("defer", "true");
       else if (options.async) _script.setAttribute("async", "true");
-      if (options.id) _script.id = options.id;
-      if (options.src) _script.src = options.src;
-      if (options.text) _script.text = options.text;
+      _script.src = options.src;
       document.head.appendChild(_script);
     } else if (preExistingElements[0]) {
       script = preExistingElements[0];
