@@ -1,23 +1,44 @@
 import { useState } from "react";
 import { useTitle } from "./hoofd-fix";
 import { useEffect } from "react";
+import { Suspense } from "react";
+import { lazy } from "react";
 
 function App() {
   const [fruit, setFruit] = useState();
 
   useTitle("🚫 Root - No fruit chosen");
 
+  const [LazyComponent, setLazyComponent] = useState(null);
+
   return (
     <>
       <TitlePreviewer />
-      <h1>Choose a fruit!</h1>
-      <div>
-        <button onClick={() => setFruit()}>Reset</button>
-        <button onClick={() => setFruit("apple")}>Apple</button>
-        <button onClick={() => setFruit("banana")}>Banana</button>
-      </div>
-      {fruit === "apple" && <Apple />}
-      {fruit === "banana" && <Banana />}
+      <Suspense fallback={<FallbackContent />}>
+        <h1>Choose a fruit!</h1>
+        <div>
+          <button onClick={() => setFruit()}>Reset</button>
+          <button onClick={() => setFruit("apple")}>Apple</button>
+          <button onClick={() => setFruit("banana")}>Banana</button>
+        </div>
+        {fruit === "apple" && <Apple />}
+        {fruit === "banana" && <Banana />}
+
+        <h2>Show lazy loaded content</h2>
+        <button
+          onClick={() => {
+            if (LazyComponent) {
+              setLazyComponent(null);
+            } else {
+              setLazyComponent(createLazyComponent());
+            }
+          }}
+        >
+          Toggle show lazy component
+        </button>
+
+        {LazyComponent && <LazyComponent />}
+      </Suspense>
     </>
   );
 }
@@ -91,6 +112,32 @@ function TitlePreviewer() {
   return (
     <div style={{ background: "lightgray", padding: 16 }}>
       Current title: {title}
+    </div>
+  );
+}
+
+function FallbackContent() {
+  useTitle("⏳ Fallback content");
+  return (
+    <div style={{ background: "yellow", padding: 16 }}>
+      I am the fallback content because some lazy component is suspending! You
+      should see me for about 2 seconds.
+    </div>
+  );
+}
+
+function createLazyComponent() {
+  return lazy(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return { default: BaseLazyComponent };
+  });
+}
+
+function BaseLazyComponent() {
+  useTitle("😴 Lazy loaded");
+  return (
+    <div style={{ background: "darkgray", color: "white", padding: 16 }}>
+      Hello from lazy loaded component!
     </div>
   );
 }
