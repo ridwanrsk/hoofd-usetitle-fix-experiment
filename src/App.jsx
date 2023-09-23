@@ -5,7 +5,7 @@ import { useEffect } from "react";
 function App() {
   const [fruit, setFruit] = useState();
 
-  useTitle("🚫 No fruit chosen");
+  useTitle("🚫 Root - No fruit chosen");
 
   return (
     <>
@@ -23,14 +23,16 @@ function App() {
 }
 
 function Apple() {
-  useTitle("🍎 Apple");
+  useTitle("🍎 Child - Apple");
   return (
-    <div style={{ background: "lightpink", padding: 16 }}>Hello from apple!</div>
+    <div style={{ background: "lightpink", padding: 16 }}>
+      Hello from apple!
+    </div>
   );
 }
 
 function Banana() {
-  useTitle("🍌 Banana");
+  useTitle("🍌 Child - Banana");
   return (
     <div style={{ background: "yellow", padding: 16 }}>Hello from banana!</div>
   );
