@@ -25,7 +25,7 @@ var applyTitleTemplate = function applyTitleTemplate(title, template) {
 return template ? template.replace(/%s/g, title || '') : title;
 };
 var changeOrCreateMetaTag = function changeOrCreateMetaTag(meta) {
-var result = document.head.querySelectorAll(meta.charset ? "meta[" + meta.keyword + "]" : "meta[" + meta.keyword + "="" + meta[meta.keyword] + ""]");
+var result = document.head.querySelectorAll(meta.charset ? "meta[" + meta.keyword + "]" : "meta[" + meta.keyword + "=\"" + meta[meta.keyword] + "\"]");
 if (result[0]) {
 if (meta.charset) {
 result[0].setAttribute(meta.keyword, meta.charset);
@@ -106,7 +106,7 @@ return m.keyword === oldMeta.keyword && (m.charset || m[m.keyword] === oldMeta[m
 if (newMeta) {
 changeOrCreateMetaTag(newMeta);
 } else {
-var result = document.head.querySelectorAll(oldMeta.charset ? "meta[" + oldMeta.keyword + "]" : "meta[" + oldMeta.keyword + "="" + oldMeta[oldMeta.keyword] + ""]");
+var result = document.head.querySelectorAll(oldMeta.charset ? "meta[" + oldMeta.keyword + "]" : "meta[" + oldMeta.keyword + "=\"" + oldMeta[oldMeta.keyword] + "\"]");
 if (result[0]) {
 document.head.removeChild(result[0]);
 }
@@ -143,7 +143,7 @@ case 38:
 ch = '&';
 break;
 case 39:
-ch = ''';
+ch = '\'';
 break;
 case 60:
 ch = '<';
@@ -225,7 +225,7 @@ node.current.setAttribute(key, options[key]);
 }, [options.href, options.media, options.as, options.rel, options.crossorigin, options.type, options.hreflang, options.sizes]);
 useEffect(function () {
 hasMounted.current = true;
-var preExistingElements = document.querySelectorAll("link[data-hoofd="1"]");
+var preExistingElements = document.querySelectorAll("link[data-hoofd=\"1\"]");
 preExistingElements.forEach(function (x) {
 var found = true;
 Object.keys(options).forEach(function (key) {
@@ -260,7 +260,7 @@ if (isServerSide) {
 dispatcher._addToQueue(SCRIPT, options);
 }
 useEffect(function () {
-var preExistingElements = options.id ? document.querySelectorAll("script[id="" + options.id + ""]") : document.querySelectorAll("script[src="" + options.src + ""]");
+var preExistingElements = options.id ? document.querySelectorAll("script[id=\"" + options.id + "\"]") : document.querySelectorAll("script[src=\"" + options.src + "\"]");
 var script;
 if (!preExistingElements[0] && (options.src || options.id)) {
 var _script = document.createElement('script');
